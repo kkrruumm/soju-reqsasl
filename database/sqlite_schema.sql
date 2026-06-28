@@ -27,6 +27,7 @@ CREATE TABLE Network (
 	sasl_plain_password TEXT,
 	sasl_external_cert BLOB,
 	sasl_external_key BLOB,
+	sasl_required INTEGER NOT NULL DEFAULT 0,
 	auto_away INTEGER NOT NULL DEFAULT 1,
 	enabled INTEGER NOT NULL DEFAULT 1,
 	FOREIGN KEY(user) REFERENCES User(id),

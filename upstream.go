@@ -825,6 +825,13 @@ func (uc *upstreamConn) handleMessage(ctx context.Context, msg *irc.Message) err
 				break // we'll send CAP END after authentication is completed
 			}
 
+			if uc.network.SASLRequired {
+				if uc.network.SASL.Mechanism == "" {
+					return uc.saslRequiredError("SASL is required for this network but no SASL credentials are configured")
+				}
+				return uc.saslRequiredError("SASL is required for this network but the server does not offer the configured SASL mechanism")
+			}
+
 			uc.SendMessage(ctx, &irc.Message{
 				Command: "CAP",
 				Params:  []string{"END"},
@@ -996,6 +1003,9 @@ func (uc *upstreamConn) handleMessage(ctx context.Context, msg *irc.Message) err
 		}
 
 		if !uc.registered {
+			if uc.network.SASLRequired && msg.Command != irc.RPL_SASLSUCCESS {
+				return uc.saslRequiredError(fmt.Sprintf("SASL authentication did not succeed (%v)", msg.Command))
+			}
 			uc.SendMessage(ctx, &irc.Message{
 				Command: "CAP",
 				Params:  []string{"END"},
@@ -2093,6 +2103,19 @@ func (uc *upstreamConn) requestSASL() bool {
 	return uc.supportsSASL(uc.network.SASL.Mechanism)
 }
 
+// saslRequiredError creates a registration error to abort registration when
+// the network has SASLRequired set but SASL auth cant be completed,
+// this prevents the upstream connection from ever registering by non-SASL means
+// so a host cloak which depends on SASL cant slip
+func (uc *upstreamConn) saslRequiredError(reason string) error {
+	uc.logger.Printf("refusing to register without SASL: %v", reason)
+	return registrationError{&irc.Message{
+		Prefix:  uc.serverPrefix,
+		Command: "FAIL",
+		Params:  []string{"*", "SASL_REQUIRED", reason},
+	}}
+}
+
 func (uc *upstreamConn) handleCapAck(ctx context.Context, name string, ok bool) error {
 	uc.caps.SetEnabled(name, ok)
 
@@ -2103,6 +2126,9 @@ func (uc *upstreamConn) handleCapAck(ctx context.Context, name string, ok bool) 
 		}
 		if !ok {
 			uc.logger.Printf("server refused to acknowledge the SASL capability")
+			if uc.network.SASLRequired {
+				return uc.saslRequiredError("server refused to acknowledge the SASL capability")
+			}
 			return nil
 		}
 

@@ -226,7 +226,7 @@ func init() {
 		"network": {
 			children: serviceCommandSet{
 				"create": {
-					usage:  "-addr <addr> [-name name] [-username username] [-pass pass] [-realname realname] [-certfp fingerprint] [-nick nick] [-auto-away auto-away] [-enabled enabled] [-ignore-limit ignore-limit] [-connect-command command]...",
+					usage:  "-addr <addr> [-name name] [-username username] [-pass pass] [-realname realname] [-certfp fingerprint] [-nick nick] [-auto-away auto-away] [-enabled enabled] [-sasl-required sasl-required] [-ignore-limit ignore-limit] [-connect-command command]...",
 					desc:   "add a new network",
 					handle: handleServiceNetworkCreate,
 				},
@@ -235,7 +235,7 @@ func init() {
 					handle: handleServiceNetworkStatus,
 				},
 				"update": {
-					usage:  "[name] [-addr addr] [-name name] [-username username] [-pass pass] [-realname realname] [-certfp fingerprint] [-nick nick] [-auto-away auto-away] [-enabled enabled] [-ignore-limit ignore-limit] [-connect-command command]...",
+					usage:  "[name] [-addr addr] [-name name] [-username username] [-pass pass] [-realname realname] [-certfp fingerprint] [-nick nick] [-auto-away auto-away] [-enabled enabled] [-sasl-required sasl-required] [-ignore-limit ignore-limit] [-connect-command command]...",
 					desc:   "update a network",
 					handle: handleServiceNetworkUpdate,
 				},
@@ -535,7 +535,7 @@ func getNetworkFromArg(ctx *serviceContext, params []string) (*network, []string
 type networkFlagSet struct {
 	*flag.FlagSet
 	Addr, Name, Nick, Username, Pass, Realname, CertFP *string
-	AutoAway, Enabled                                  *bool
+	AutoAway, Enabled, SASLRequired                    *bool
 	IgnoreLimit                                        bool
 	ConnectCommands                                    []string
 }
@@ -551,6 +551,7 @@ func newNetworkFlagSet() *networkFlagSet {
 	fs.Var(stringPtrFlag{&fs.CertFP}, "certfp", "")
 	fs.Var(boolPtrFlag{&fs.AutoAway}, "auto-away", "")
 	fs.Var(boolPtrFlag{&fs.Enabled}, "enabled", "")
+	fs.Var(boolPtrFlag{&fs.SASLRequired}, "sasl-required", "")
 	fs.BoolVar(&fs.IgnoreLimit, "ignore-limit", false, "")
 	fs.Var((*stringSliceFlag)(&fs.ConnectCommands), "connect-command", "")
 	return fs
@@ -606,6 +607,9 @@ func (fs *networkFlagSet) update(network *database.Network) error {
 	}
 	if fs.Enabled != nil {
 		network.Enabled = *fs.Enabled
+	}
+	if fs.SASLRequired != nil {
+		network.SASLRequired = *fs.SASLRequired
 	}
 	if fs.ConnectCommands != nil {
 		if len(fs.ConnectCommands) == 1 && fs.ConnectCommands[0] == "" {
@@ -893,6 +897,10 @@ func handleServiceSASLStatus(ctx *serviceContext, params []string) error {
 		ctx.print("SASL EXTERNAL (CertFP) enabled")
 	case "":
 		ctx.print("SASL is disabled")
+	}
+
+	if net.SASLRequired {
+		ctx.print("SASL is required: the bouncer will refuse to register without a successful SASL authentication")
 	}
 
 	if uc := net.conn; uc != nil {

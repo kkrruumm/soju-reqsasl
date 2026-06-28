@@ -185,6 +185,7 @@ type Network struct {
 	ConnectCommands []string
 	CertFP          string
 	SASL            SASL
+	SASLRequired    bool
 	AutoAway        bool
 	Enabled         bool
 }

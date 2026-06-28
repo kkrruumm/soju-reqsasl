@@ -210,4 +210,5 @@ var sqliteMigrations = []string{
 		);
 	`,
 	`ALTER TABLE DeviceCertificate ADD COLUMN last_ip TEXT NOT NULL DEFAULT ''`,
+	`ALTER TABLE Network ADD COLUMN sasl_required INTEGER NOT NULL DEFAULT 0`,
 }

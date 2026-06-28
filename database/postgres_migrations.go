@@ -109,4 +109,5 @@ var postgresMigrations = []string{
 		);
 	`,
 	`ALTER TABLE "DeviceCertificate" ADD COLUMN last_ip TEXT NOT NULL DEFAULT ''`,
+	`ALTER TABLE "Network" ADD COLUMN sasl_required BOOLEAN NOT NULL DEFAULT FALSE`,
 }
